@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import math
 import torch
 import unittest
+from torch.autograd import Variable
 from gpytorch.kernels import RBFKernel
 
 
@@ -19,9 +20,9 @@ class TestRBFKernel(unittest.TestCase):
         kernel = RBFKernel(ard_num_dims=2)
         kernel.initialize(log_lengthscale=lengthscales.log())
         kernel.eval()
+        actual = (a - b).pow(2).div_(lengthscales).sum(dim=-1).mul_(-1).exp()
 
-        actual = (a - b).div_(lengthscales).pow(2).sum(dim=-1).mul_(-0.5).exp()
-        res = kernel(a, b)
+        res = kernel(Variable(a), Variable(b)).data
         self.assertLess(torch.norm(res - actual.unsqueeze(-1)), 1e-5)
 
     def test_subset_active_compute_radial_basis_function(self):
@@ -34,13 +35,13 @@ class TestRBFKernel(unittest.TestCase):
         kernel = RBFKernel(active_dims=[0])
         kernel.initialize(log_lengthscale=math.log(lengthscale))
         kernel.eval()
-
         actual = torch.Tensor([
             [16, 4],
             [4, 0],
             [64, 36],
-        ]).mul_(-0.5).div_(lengthscale**2).exp()
-        res = kernel(a, b)
+        ]).mul_(-1).div_(lengthscale).exp()
+
+        res = kernel(Variable(a), Variable(b)).data
         self.assertLess(torch.norm(res - actual), 1e-5)
 
     def test_computes_radial_basis_function(self):
@@ -50,13 +51,13 @@ class TestRBFKernel(unittest.TestCase):
 
         kernel = RBFKernel().initialize(log_lengthscale=math.log(lengthscale))
         kernel.eval()
-
         actual = torch.Tensor([
             [16, 4],
             [4, 0],
             [64, 36],
-        ]).mul_(-0.5).div_(lengthscale**2).exp()
-        res = kernel(a, b)
+        ]).mul_(-1).div_(lengthscale).exp()
+
+        res = kernel(Variable(a), Variable(b)).data
         self.assertLess(torch.norm(res - actual), 1e-5)
 
     def test_computes_radial_basis_function_gradient(self):
@@ -66,18 +67,18 @@ class TestRBFKernel(unittest.TestCase):
 
         kernel = RBFKernel().initialize(log_lengthscale=math.log(lengthscale))
         kernel.eval()
+        param = Variable(
+            torch.Tensor(3, 3).fill_(math.log(lengthscale)),
+            requires_grad=True,
+        )
+        diffs = Variable(a.expand(3, 3) - b.expand(3, 3).transpose(0, 1))
+        actual_output = (-(diffs ** 2) / (param.exp())).exp()
+        actual_output.backward(torch.eye(3))
+        actual_param_grad = param.grad.data.sum()
 
-        param = math.log(lengthscale) * torch.ones(3, 3)
-        param.requires_grad_()
-        diffs = a.expand(3, 3) - b.expand(3, 3).transpose(0, 1)
-        actual_output = (-0.5 * (diffs / param.exp()) ** 2).exp()
-        actual_output.backward(gradient=torch.eye(3))
-        actual_param_grad = param.grad.sum()
-
-        output = kernel(a, b)
+        output = kernel(Variable(a), Variable(b))
         output.backward(gradient=torch.eye(3))
-        res = kernel.log_lengthscale.grad
-
+        res = kernel.log_lengthscale.grad.data
         self.assertLess(torch.norm(res - actual_param_grad), 1e-5)
 
     def test_subset_active_computes_radial_basis_function_gradient(self):
@@ -87,19 +88,21 @@ class TestRBFKernel(unittest.TestCase):
         b = torch.Tensor([0, 2, 2]).view(3, 1)
         lengthscale = 2
 
-        param = math.log(lengthscale) * torch.ones(3, 3)
-        param.requires_grad_()
-        diffs = a_1.expand(3, 3) - b.expand(3, 3).transpose(0, 1)
-        actual_output = (-0.5 * (diffs / param.exp()) ** 2).exp()
-        actual_output.backward(torch.eye(3))
-        actual_param_grad = param.grad.sum()
-
         kernel = RBFKernel(active_dims=[0])
         kernel.initialize(log_lengthscale=math.log(lengthscale))
         kernel.eval()
-        output = kernel(a, b)
+        param = Variable(
+            torch.Tensor(3, 3).fill_(math.log(lengthscale)),
+            requires_grad=True,
+        )
+        output = kernel(Variable(a), Variable(b))
         output.backward(gradient=torch.eye(3))
-        res = kernel.log_lengthscale.grad
+        res = kernel.log_lengthscale.grad.data
+
+        diffs = Variable(a_1.expand(3, 3) - b.expand(3, 3).transpose(0, 1))
+        actual_output = (-(diffs ** 2) / (param.exp())).exp()
+        actual_output.backward(torch.eye(3))
+        actual_param_grad = param.grad.data.sum()
 
         self.assertLess(torch.norm(res - actual_param_grad), 1e-5)
 
