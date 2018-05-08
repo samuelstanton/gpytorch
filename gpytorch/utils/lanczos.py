@@ -4,6 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import torch
+import pdb
 
 
 def lanczos_tridiag(matmul_closure, max_iter, tol=1e-5, init_vecs=None,
@@ -178,7 +179,7 @@ def lanczos_tridiag_to_diag(t_mat):
 
     for i in range(batch_dim1):
         for j in range(batch_dim2):
-            evals, evecs = t_mat[i, j].symeig(eigenvectors=True)
+	    evals, evecs = t_mat[i, j].symeig(eigenvectors=True)
             mask = evals.ge(0)
             eigenvectors[i, j] = evecs * mask.type_as(evecs).unsqueeze(0)
             eigenvalues[i, j] = evals.masked_fill_(1 - mask, 1)

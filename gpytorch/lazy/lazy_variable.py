@@ -15,6 +15,7 @@ from ..functions._matmul import Matmul
 from .. import beta_features, settings
 from .lazy_variable_representation_tree import LazyVariableRepresentationTree
 
+import pdb
 
 class LazyVariable(object):
 
@@ -217,15 +218,20 @@ class LazyVariable(object):
         Returns:
         - (t) - the predictive posterior mean of the test points
         """
-        n_train = train_labels.size(0)
+        if len(train_labels.size()) == 2:
+		train_labels = train_labels.t()
+		full_mean = full_mean.t()
+		label_dim = train_labels.size(1)
+
+	n_train = train_labels.size(0)
         if precomputed_cache is None:
             train_mean = full_mean[:n_train]
             train_train_covar = self[:n_train, :n_train].add_diag(noise)
-            precomputed_cache = train_train_covar.inv_matmul(train_labels - train_mean)
+	    precomputed_cache = train_train_covar.inv_matmul(train_labels - train_mean)
 
         test_mean = full_mean[n_train:]
         test_train_covar = self[n_train:, :n_train]
-        res = test_train_covar.matmul(precomputed_cache) + test_mean
+	res = test_train_covar.matmul(precomputed_cache) + test_mean
         return res, precomputed_cache
 
     def _exact_predictive_covar_inv_quad_form_cache(self, train_train_covar_inv_root, test_train_covar):

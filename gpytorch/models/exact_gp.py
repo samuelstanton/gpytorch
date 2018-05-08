@@ -10,7 +10,7 @@ from ..module import Module
 from ..functions import exact_predictive_mean, exact_predictive_covar
 from ..random_variables import GaussianRandomVariable
 from ..likelihoods import GaussianLikelihood
-
+import pdb
 
 class ExactGP(Module):
 

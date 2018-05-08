@@ -9,7 +9,6 @@ from torch.autograd import Variable
 from .lazy_variable import LazyVariable
 from functools import reduce
 
-
 def _prod(iterable):
     return reduce(operator.mul, iterable, 1)
 
