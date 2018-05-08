@@ -22,7 +22,7 @@ def _matmul(lazy_vars, rhs):
         if is_batch:
             n_batch = res.size(0)
             res = res.view(n_batch, lazy_var.size(-1), -1)
-            factor = lazy_var._matmul(res)
+            factor = lazy_var._matmul(res).contiguous()
             n_batch = factor.size(0)
             factor = factor.view(n_batch, lazy_var.size(-1), -1, n_cols).transpose(-3, -2)
             res = factor.contiguous().view(n_batch, -1, n_cols)

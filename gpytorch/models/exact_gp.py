@@ -97,19 +97,26 @@ class ExactGP(Module):
             if not isinstance(full_output, GaussianRandomVariable):
                 raise RuntimeError('ExactGP.forward must return a GaussianRandomVariable')
             full_mean, full_covar = full_output.representation()
-
-            noise = self.likelihood.log_noise.exp()
-            predictive_mean, mean_cache = exact_predictive_mean(
-                full_covar, full_mean,
-                Variable(self.train_targets),
-                noise, self.mean_cache
-            )
-            predictive_covar, covar_cache = exact_predictive_covar(
-                full_covar,
-                self.train_targets.size(-1),
-                noise, self.covar_cache
-            )
+	    if len(full_mean.size()) == 2:
+		for i in range(full_mean.size(0)):
+	            noise = self.likelihood.log_noise.exp()
+		    if self.mean_cache is None:
+			cache_arg = None
+		    else:
+			cache_arg = self.mean_cache[i, :]
+            	    temp_mean, temp_mean_cache = exact_predictive_mean(full_covar[i, :, :], full_mean[i, :], Variable(self.train_targets[i, :]), noise, cache_arg)
+		    if i == 0:
+			predictive_mean = temp_mean.unsqueeze(0)
+			mean_cache = temp_mean_cache.unsqueeze(0)
+		    else:	
+			predictive_mean = torch.cat((predictive_mean, temp_mean.unsqueeze(0)))
+			mean_cache = torch.cat((mean_cache, temp_mean_cache.unsqueeze(0)))
+	    else:
+		noise = self.likelihood.log_noise.exp()
+                predictive_mean, mean_cache = exact_predictive_mean(full_covar, full_mean, Variable(self.train_targets), noise, self.mean_cache)
+            predictive_covar, covar_cache = exact_predictive_covar(full_covar, self.train_targets.size(-1),
+                                                                            noise, self.covar_cache)
 
             self.mean_cache = mean_cache
             self.covar_cache = covar_cache
-            return GaussianRandomVariable(predictive_mean, predictive_covar)
+	    return GaussianRandomVariable(predictive_mean, predictive_covar)
