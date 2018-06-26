@@ -12,15 +12,15 @@ import gpytorch
 class Kernel(Module):
     def __init__(
         self, has_lengthscale=False, ard_num_dims=None, log_lengthscale_bounds=(-10000, 10000), active_dims=None
-    ):
+    , batch_size=1):
         super(Kernel, self).__init__()
         self.active_dims = active_dims
         self.ard_num_dims = ard_num_dims
         if has_lengthscale:
             lengthscale_num_dims = 1 if ard_num_dims is None else ard_num_dims
-            self.register_parameter(
+	    self.register_parameter(
                 "log_lengthscale",
-                torch.nn.Parameter(torch.Tensor(1, 1, lengthscale_num_dims).zero_()),
+                torch.nn.Parameter(torch.Tensor(batch_size, 1, lengthscale_num_dims).zero_()),
                 bounds=log_lengthscale_bounds,
             )
 
