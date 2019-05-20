@@ -150,7 +150,9 @@ class DefaultPredictionStrategy(object):
         elif full_inputs[0].dim() <= full_targets.dim():
             ftcm = torch.einsum("...ij,...j->...i", [fant_train_covar, self.mean_cache])
         else:
-            ftcm = torch.einsum("f...ij,...j->f...i", [fant_train_covar, self.mean_cache])
+            ftcm = fant_train_covar.matmul(self.mean_cache.unsqueeze(-1))
+            ftcm = ftcm.squeeze(-1)
+            #ftcm = torch.einsum("f...ij,...j->f...i", [fant_train_covar, self.mean_cache])
         small_system_rhs = targets - fant_mean - ftcm
         small_system_rhs = small_system_rhs.unsqueeze(-1)
         # Schur complement of a spd matrix is guaranteed to be positive definite
